@@ -92,7 +92,9 @@ namespace PerfectExcel.Core
             //去掉第一行和注释字段
             List<List<string>> valueList = ListPool<List<string>>.Get();
             int valueCount = valueArray.GetLength(1)-1;//数据大小(去除Title)
-            for (int x = 0; x < valueArray.GetLength(0); x++)
+            int maxX = valueArray.GetLength(0);
+            int maxY = valueArray.GetLength(1);
+            for (int x = 0; x <maxX; x++)
             {
                 var title = valueArray[x, 0];
                 if(string.IsNullOrEmpty(title))
@@ -100,18 +102,22 @@ namespace PerfectExcel.Core
                 if(StartsWithSpecialChar(title))
                     continue;
                 List<string> values = ListPool<string>.Get();
-                for (int y = 1; y < valueArray.GetLength(1); y++)
+                for (int y = 1; y < maxY; y++)
                 {
                     var value = valueArray[x, y];
+                    if (x == 0 && string.IsNullOrEmpty(value))
+                    {
+                        maxY = y;
+                        continue;
+                    }
                     values.Add(value);
                 }
                 valueList.Add(values);
             }
-            int valueLength = valueList.Count;//数据长度，一个数据段有多少数据
-
             //重新把数据排列放入ValueArray
-            valueArray = new String[valueCount,valueLength];
-            for (int i = 0; i < valueList.Count; i++)
+            maxY--;
+            valueArray = new String[maxY,maxX];
+            for (int i = 0; i < maxX; i++)
             {
                 var list = valueList[i];
                 for (int j = 0; j < list.Count; j++)
@@ -127,7 +133,7 @@ namespace PerfectExcel.Core
             var fields = valueType.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             if (fields.Length != valueArray.GetLength(1))
             {
-                LogE($"Convert error,{valueType} length != {valueArray.GetLength(1)}");
+                LogE($"Convert error,[{valueType}] Fields Length {fields.Length} !=  {valueArray.GetLength(1)}");
                 return;
             }
             for (int x = 0; x < valueArray.GetLength(0); x++)
@@ -137,12 +143,23 @@ namespace PerfectExcel.Core
                 {
                     var fieldInfo = fields[i];
                     var attribute = fieldInfo.GetCustomAttribute<ExcelAttribute>();
+                    
                     var valueField = new ValueField
                     {
                         value = valueArray[x, i],
                         fieldInfo = fieldInfo,
-                        attribute = attribute
+                        attribute = attribute,
+                        convertValue = null
                     };
+                    var otherAttributes = fieldInfo.GetCustomAttributes();
+                    foreach (var otherAttribute in otherAttributes)
+                    {
+                        if (otherAttribute is IExcelConvertValue convertValue)
+                        {
+                            valueField.convertValue = convertValue;
+                            break;
+                        }
+                    }
                     var res = valueField.CreateConvert();
                     if (!res)
                     {
@@ -160,6 +177,7 @@ namespace PerfectExcel.Core
         {
             public FieldInfo fieldInfo;
             public ExcelAttribute attribute;
+            public IExcelConvertValue convertValue;
             public string value;
             public IStringConvert convert;
 
@@ -198,7 +216,9 @@ namespace PerfectExcel.Core
             }
             public object Convert(Object obj)
             {
-                var valueObj = convert.Convert(value,attribute.splitChars);
+                if (string.IsNullOrEmpty(value))
+                    value = "";
+                var valueObj = convert.Convert(value,convertValue);
                 fieldInfo.SetValue(obj,valueObj);
                 return obj;
             }

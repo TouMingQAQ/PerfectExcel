@@ -3,22 +3,47 @@ using UnityEngine;
 
 namespace PerfectExcel.Attribute
 {
+    [AttributeUsage(AttributeTargets.Field)]
     public class ExcelAttribute : System.Attribute
     {
-        public static char[] Split = new[] { ':' ,';', '|'};
         public Type convertType;
-        public char[] splitChars;
         public ExcelAttribute()
         {
             this.convertType = null;
-            splitChars = null;
         }
-        public ExcelAttribute(Type convertType,char[] splitChars = null)
+        public ExcelAttribute(Type convertType)
         {
             this.convertType = convertType;
-            this.splitChars = splitChars;
-            this.splitChars ??= Split;
+        }
+        
+    }
+    public interface IExcelConvertValue
+    {
+        
+    }
+    [AttributeUsage(AttributeTargets.Field)]
+    public class ExcelSplitAttribute : System.Attribute,IExcelConvertValue
+    {
+        public char[] split;
+
+        public ExcelSplitAttribute(char[] split)
+        {
+            this.split = split;
         }
     }
+    [AttributeUsage(AttributeTargets.Field)]
+    public class ExcelBoolAttribute : System.Attribute,IExcelConvertValue
+    {
+        public string TrueStr;
+        public string FalseStr;
+
+        public ExcelBoolAttribute(string trueStr, string falseStr)
+        {
+            this.TrueStr = trueStr;
+            this.FalseStr = falseStr;
+        }
+    }
+
+ 
 }
 
