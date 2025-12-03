@@ -116,6 +116,7 @@ namespace PerfectExcel.Core
             }
             //重新把数据排列放入ValueArray
             maxY--;
+            maxX = valueList.Count;
             valueArray = new String[maxY,maxX];
             for (int i = 0; i < maxX; i++)
             {
